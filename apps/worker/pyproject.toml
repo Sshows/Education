@@ -1,0 +1,4 @@
+[project]
+name = "ent-grant-worker"
+version = "0.1.0"
+dependencies = ["redis>=5.0", "rq>=1.16", "httpx>=0.27", "beautifulsoup4>=4.12"]

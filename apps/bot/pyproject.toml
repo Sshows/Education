@@ -1,0 +1,4 @@
+[project]
+name = "ent-grant-bot"
+version = "0.1.0"
+dependencies = ["aiogram>=3.7", "fastapi>=0.115", "uvicorn>=0.30"]
