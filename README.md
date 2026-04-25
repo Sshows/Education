@@ -72,3 +72,14 @@ cd apps/api && python -m app.scripts.seed_sources
 - Не показывать числа без источников (или показывать `нет подтверждённых данных`).
 - При конфликте источников показывать предупреждение и снижать confidence.
 - Максимальная вероятность ограничена 99%.
+
+## Railway deployment
+Подробный гайд: `docs/RAILWAY.md`.
+
+Config-as-code файлы:
+- `/railway/api.railway.json`
+- `/railway/web.railway.json`
+- `/railway/bot.railway.json`
+- `/railway/worker.railway.json`
+
+Каждый Railway service должен использовать **свой** config path и **свой** Dockerfile. Не деплойте `infra/docker-compose.yml` как единый service.
