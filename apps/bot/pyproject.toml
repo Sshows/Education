@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ent-grant-bot"
+version = "0.2.0"
+requires-python = ">=3.11"
+dependencies = [
+  "aiogram>=3.7",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.3",
+  "python-dotenv>=1.0"
+]
