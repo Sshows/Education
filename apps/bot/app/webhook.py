@@ -15,6 +15,7 @@ async def health():
     return {"status": "ok"}
 
 
+@app.post('/webhook')
 @app.post('/bot/webhook')
 async def bot_webhook(request: Request, x_telegram_bot_api_secret_token: str | None = Header(default=None)):
     if settings.telegram_webhook_secret and x_telegram_bot_api_secret_token != settings.telegram_webhook_secret:

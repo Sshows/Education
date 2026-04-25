@@ -74,7 +74,7 @@ cd apps/api && python -m app.scripts.seed_sources
 - Максимальная вероятность ограничена 99%.
 
 ## Railway deployment
-Подробный гайд: `docs/RAILWAY.md`.
+Подробный гайд: `docs/DEPLOY_RAILWAY.md` (legacy notes: `docs/RAILWAY.md`).
 
 Config-as-code файлы:
 - `/railway/api.railway.json`
