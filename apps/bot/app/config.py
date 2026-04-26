@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     api_url: str | None = None
     environment: Literal["development", "production"] = "development"
     port: int = 8080
+    support_email: str = ""
+    support_telegram_username: str = ""
 
     @model_validator(mode="after")
     def validate_runtime_config(self) -> "Settings":

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   SUBJECT_COMBINATIONS,
@@ -16,7 +16,7 @@ import { getTelegramWebApp } from '../../lib/telegram';
 
 type Step = 1 | 2 | 3 | 4;
 
-export default function CalculatorPage() {
+function CalculatorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -303,5 +303,18 @@ export default function CalculatorPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function CalculatorPage() {
+  return (
+    <Suspense fallback={
+      <main>
+        <div className="skeleton skeleton-title" style={{ marginTop: 20 }} />
+        <div className="skeleton skeleton-card" style={{ marginTop: 12 }} />
+      </main>
+    }>
+      <CalculatorContent />
+    </Suspense>
   );
 }

@@ -44,7 +44,7 @@ async def configure_telegram() -> None:
                 url=settings.telegram_webhook_url or "",
                 secret_token=settings.telegram_webhook_secret,
                 drop_pending_updates=True,
-                allowed_updates=["message", "callback_query"],
+                allowed_updates=["message", "callback_query", "pre_checkout_query"],
             )
             logger.info("Telegram webhook configured for %s", _safe_url(settings.telegram_webhook_url))
         except Exception:

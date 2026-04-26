@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import re
 
+import httpx
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
+from aiogram.types import BotCommand, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Message, PreCheckoutQuery, WebAppInfo
 
 from app.config import settings
 
@@ -21,6 +22,11 @@ BOT_COMMANDS = [
     BotCommand(command="profile", description="Мой профиль и история"),
     BotCommand(command="ask", description="AI-консультант"),
     BotCommand(command="sources", description="Источники данных"),
+    BotCommand(command="premium", description="Premium и оплата Stars"),
+    BotCommand(command="buy", description="Купить полный прогноз"),
+    BotCommand(command="payments", description="Мои платежи"),
+    BotCommand(command="restore", description="Восстановить доступ"),
+    BotCommand(command="support", description="Поддержка"),
     BotCommand(command="help", description="Помощь"),
 ]
 
@@ -40,6 +46,24 @@ _ALIAS_PAIRS: dict[str, tuple[str, str]] = {
     "геоангл": ("geography", "foreign_language"),
     "казлит": ("kazakh_language", "kazakh_literature"),
     "руслит": ("russian_language", "russian_literature"),
+}
+
+PAYMENT_PRODUCTS = {
+    "pro_once": {
+        "title": "Полный прогноз",
+        "description": "Расширенный прогноз, рекомендации, источники и сравнение score vs cutoff.",
+        "stars_price": 50,
+    },
+    "ai_pack": {
+        "title": "AI-пакет",
+        "description": "20 вопросов AI-консультанту с ответами по источникам.",
+        "stars_price": 100,
+    },
+    "premium_month": {
+        "title": "Premium на месяц",
+        "description": "Безлимитные прогнозы, 100 AI-вопросов, профиль и дедлайн-алерты.",
+        "stars_price": 250,
+    },
 }
 
 
@@ -65,6 +89,7 @@ def start_keyboard() -> InlineKeyboardMarkup:
             [_wa_button("🎯 Рассчитать шанс на грант", "/calculator")],
             [_wa_button("🏛 Подобрать вуз", "/universities"), _wa_button("📋 Программы", "/programs")],
             [_wa_button("🤖 AI-консультант", "/ai"), _wa_button("📅 Дедлайны", "/deadlines")],
+            [_wa_button("Premium", "/pricing"), InlineKeyboardButton(text="Купить полный прогноз", callback_data="buy:pro_once")],
         ]
     )
 
@@ -85,6 +110,96 @@ def combo_keyboard(pair_key: str) -> InlineKeyboardMarkup:
     )
 
 
+def pricing_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Полный прогноз — 50 Stars", callback_data="buy:pro_once")],
+            [InlineKeyboardButton(text="AI-пакет — 100 Stars", callback_data="buy:ai_pack")],
+            [InlineKeyboardButton(text="Premium на месяц — 250 Stars", callback_data="buy:premium_month")],
+            [_wa_button("Открыть страницу Premium", "/pricing")],
+        ]
+    )
+
+
+def success_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [_wa_button("Открыть Mini App", "/")],
+            [_wa_button("Открыть полный прогноз", "/result/demo")],
+        ]
+    )
+
+
+async def _api_request(method: str, path: str, **kwargs):
+    if not settings.api_url:
+        raise RuntimeError("API_URL is not configured")
+    base = settings.api_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=12) as client:
+        response = await client.request(method, f"{base}{path}", **kwargs)
+        response.raise_for_status()
+        return response.json()
+
+
+async def create_stars_order(product_code: str, telegram_id: int | None) -> dict:
+    return await _api_request(
+        "POST",
+        "/api/payments/telegram-stars/order",
+        json={
+            "product_code": product_code,
+            "telegram_id": telegram_id,
+            "idempotency_key": f"tg-stars:{telegram_id}:{product_code}",
+            "metadata": {"source": "bot"},
+        },
+    )
+
+
+async def get_order(order_id: int) -> dict:
+    return await _api_request("GET", f"/api/payments/orders/{order_id}")
+
+
+async def confirm_stars_payment(payment, telegram_id: int | None) -> dict:
+    return await _api_request(
+        "POST",
+        "/api/payments/telegram-stars/confirm",
+        json={
+            "order_id": int(payment.invoice_payload),
+            "telegram_id": telegram_id,
+            "total_amount": payment.total_amount,
+            "currency": payment.currency,
+            "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+            "provider_payment_id": payment.provider_payment_charge_id,
+            "raw_payload": {
+                "invoice_payload": payment.invoice_payload,
+                "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+                "provider_payment_charge_id": payment.provider_payment_charge_id,
+            },
+        },
+    )
+
+
+async def send_stars_invoice(message: Message, product_code: str) -> None:
+    product = PAYMENT_PRODUCTS.get(product_code)
+    if not product:
+        await message.answer("Неизвестный продукт. Откройте /premium и выберите тариф ещё раз.")
+        return
+    try:
+        order = await create_stars_order(product_code, message.from_user.id if message.from_user else None)
+    except Exception:
+        await message.answer("Не удалось создать заказ. Попробуйте позже или напишите /support.")
+        return
+
+    await bot.send_invoice(
+        chat_id=message.chat.id,
+        title=product["title"],
+        description=product["description"],
+        payload=str(order["order_id"]),
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label=product["title"], amount=product["stars_price"])],
+        start_parameter=f"buy_{product_code}",
+    )
+
+
 # -------- Command handlers --------
 
 @dp.message(CommandStart())
@@ -100,6 +215,12 @@ async def cmd_start(message: Message) -> None:
         return
     if args == "universities":
         await message.answer("Каталог вузов:", reply_markup=single_webapp_keyboard("🏛 Вузы", "/universities"))
+        return
+    if args in ("pricing", "premium"):
+        await message.answer("Premium доступ и Telegram Stars:", reply_markup=pricing_keyboard())
+        return
+    if args.startswith("buy_"):
+        await send_stars_invoice(message, args.replace("buy_", "", 1))
         return
 
     name = message.from_user.first_name if message.from_user else "абитуриент"
@@ -123,6 +244,9 @@ async def cmd_help(message: Message) -> None:
         "• `/universities` — каталог вузов Казахстана\n"
         "• `/deadlines` — срок подачи заявлений\n"
         "• `/ask` — AI-консультант по поступлению\n"
+        "• `/premium` — тарифы и Telegram Stars\n"
+        "• `/payments` — статус платежей и доступа\n"
+        "• `/restore` — восстановить доступ\n"
         "• `/sources` — открытые источники данных\n"
         "• `/profile` — история ваших расчётов\n\n"
         "💡 Просто отправьте _балл ЕНТ_ (0–140) или _комбинацию_ (физмат, инфомат, химбио…)",
@@ -175,6 +299,106 @@ async def cmd_sources(message: Message) -> None:
     await message.answer(
         "📊 Открытые источники данных (НЦТ, МНВО, приёмные комиссии):",
         reply_markup=single_webapp_keyboard("Источники данных", "/sources"),
+    )
+
+
+@dp.message(Command("premium"))
+async def cmd_premium(message: Message) -> None:
+    await message.answer(
+        "Premium открывает полный прогноз, рекомендации, разбор источников и AI-лимиты.\n\n"
+        "В Telegram для цифрового доступа используется Stars.",
+        reply_markup=pricing_keyboard(),
+    )
+
+
+@dp.message(Command("buy"))
+async def cmd_buy(message: Message) -> None:
+    await message.answer("Выберите продукт для оплаты Stars:", reply_markup=pricing_keyboard())
+
+
+@dp.message(Command("payments"))
+async def cmd_payments(message: Message) -> None:
+    await message.answer(
+        "Статус платежей и доступов можно открыть в Mini App.",
+        reply_markup=single_webapp_keyboard("Профиль и биллинг", "/profile/billing"),
+    )
+
+
+@dp.message(Command("restore"))
+async def cmd_restore(message: Message) -> None:
+    telegram_id = message.from_user.id if message.from_user else None
+    try:
+        entitlements = await _api_request("GET", "/api/payments/my-entitlements", params={"telegram_id": telegram_id})
+    except Exception:
+        await message.answer("Не удалось проверить доступ. Попробуйте позже или напишите /support.")
+        return
+
+    if not entitlements:
+        await message.answer(
+            "Активный Premium-доступ не найден. Если оплата прошла, но доступ не появился — напишите /support.",
+            reply_markup=pricing_keyboard(),
+        )
+        return
+
+    names = ", ".join(item["product_code"] for item in entitlements)
+    await message.answer(f"Доступ восстановлен: {names}", reply_markup=success_keyboard())
+
+
+@dp.message(Command("support"))
+async def cmd_support(message: Message) -> None:
+    contact = settings.support_telegram_username or settings.support_email or "укажите SUPPORT_TELEGRAM_USERNAME в Railway"
+    await message.answer(
+        "Если оплата прошла, но доступ не появился — нажмите /restore или напишите в поддержку.\n\n"
+        f"Контакт: {contact}",
+        reply_markup=single_webapp_keyboard("Открыть поддержку", "/support"),
+    )
+
+
+@dp.callback_query(F.data.startswith("buy:"))
+async def cb_buy(callback: CallbackQuery) -> None:
+    product_code = callback.data.split(":", 1)[1] if callback.data else ""
+    if callback.message:
+        await send_stars_invoice(callback.message, product_code)
+    await callback.answer()
+
+
+@dp.pre_checkout_query()
+async def handle_pre_checkout(query: PreCheckoutQuery) -> None:
+    try:
+        order = await get_order(int(query.invoice_payload))
+        expected_ok = (
+            order["provider"] == "telegram_stars"
+            and order["currency"] == "XTR"
+            and int(order["amount"]) == int(query.total_amount)
+            and query.currency == "XTR"
+            and order["status"] in {"created", "pending"}
+        )
+    except Exception:
+        expected_ok = False
+
+    if expected_ok:
+        await query.answer(ok=True)
+    else:
+        await query.answer(ok=False, error_message="Заказ не найден или сумма изменилась. Создайте заказ заново.")
+
+
+@dp.message(F.successful_payment)
+async def handle_successful_payment(message: Message) -> None:
+    payment = message.successful_payment
+    if not payment:
+        return
+    try:
+        await confirm_stars_payment(payment, message.from_user.id if message.from_user else None)
+    except Exception:
+        await message.answer(
+            "Оплата получена, но доступ не активировался автоматически. Нажмите /restore или напишите /support.",
+        )
+        return
+
+    await message.answer(
+        "Оплата прошла. Premium активирован.\n\n"
+        "Если доступ не появился — нажмите /restore или напишите /support.",
+        reply_markup=success_keyboard(),
     )
 
 

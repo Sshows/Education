@@ -8,6 +8,7 @@ const navItems = [
   { href: '/calculator', label: 'Расчёт', icon: '🎯' },
   { href: '/programs', label: 'Программы', icon: '📋' },
   { href: '/universities', label: 'Вузы', icon: '🏛' },
+  { href: '/pricing', label: 'Premium', icon: '★' },
   { href: '/profile', label: 'Профиль', icon: '👤' },
 ];
 

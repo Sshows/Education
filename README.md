@@ -39,6 +39,9 @@ Read:
 
 - [Telegram setup](docs/TELEGRAM_SETUP.md)
 - [Railway deployment](docs/DEPLOY_RAILWAY.md)
+- [Payments architecture](docs/PAYMENTS.md)
+- [Telegram Stars](docs/TELEGRAM_STARS.md)
+- [Payment providers](docs/PAYMENT_PROVIDERS.md)
 
 The bot token must live only in Railway Variables or local untracked `.env` files. If a token is exposed, rotate it in BotFather before production use.
 
@@ -56,3 +59,5 @@ cd ../web && npm run build
 - Every important number should link to a source, publisher, fetch date, and confidence.
 - If data is missing, show that confirmed source data is unavailable.
 - Do not trust Telegram user IDs from the frontend until `/api/auth/telegram` validates `initData`.
+- Telegram Stars is primary for digital access inside Telegram.
+- External KZT/crypto providers are feature-flagged and must verify provider status/webhooks before access is granted.

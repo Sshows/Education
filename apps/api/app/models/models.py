@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -207,3 +207,90 @@ class AdminUser(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
     role: Mapped[str] = mapped_column(String(64), default="editor")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PaymentProduct(Base, TimestampMixin):
+    __tablename__ = "payment_products"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    title_ru: Mapped[str] = mapped_column(String(255))
+    title_kk: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title_en: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description_ru: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_type: Mapped[str] = mapped_column(String(32))
+    stars_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    kzt_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="XTR")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    features_json: Mapped[list] = mapped_column(JSON, default=list)
+
+
+class Order(Base, TimestampMixin):
+    __tablename__ = "orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("payment_products.id"))
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="created", index=True)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(8))
+    provider_order_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    checkout_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(8))
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_charge_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    raw_payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    signature_valid: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Entitlement(Base, TimestampMixin):
+    __tablename__ = "entitlements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    product_code: Mapped[str] = mapped_column(String(64), index=True)
+    access_type: Mapped[str] = mapped_column(String(32))
+    credits_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    credits_used: Mapped[int] = mapped_column(Integer, default=0)
+    starts_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    source_order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class PaymentWebhookEvent(Base):
+    __tablename__ = "payment_webhook_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    provider_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    signature_valid: Mapped[bool] = mapped_column(Boolean, default=False)
+    processed: Mapped[bool] = mapped_column(Boolean, default=False)
+    raw_payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+Index("ix_payment_webhook_events_provider_event", PaymentWebhookEvent.provider, PaymentWebhookEvent.provider_event_id)

@@ -41,6 +41,11 @@ deadlines - Дедлайны
 profile - Профиль
 ask - AI-консультант
 sources - Источники
+premium - Premium и оплата Stars
+buy - Купить полный прогноз
+payments - Мои платежи
+restore - Восстановить доступ
+support - Поддержка
 help - Помощь
 ```
 
@@ -84,6 +89,31 @@ Then it shows Telegram Web App buttons:
 - `Программы` -> `{TELEGRAM_WEBAPP_URL}/programs`
 - `Спросить AI` -> `{TELEGRAM_WEBAPP_URL}/ai`
 - `Дедлайны` -> `{TELEGRAM_WEBAPP_URL}/deadlines`
+- `Premium` -> `{TELEGRAM_WEBAPP_URL}/pricing`
+
+## Telegram Stars
+
+For digital access inside Telegram, use Stars as the primary method.
+
+Bot commands:
+
+```text
+/premium
+/buy
+/payments
+/restore
+/support
+```
+
+The bot sends invoices with:
+
+```text
+currency=XTR
+provider_token=""
+payload=<internal order id>
+```
+
+Access is activated only after Telegram sends `successful_payment` and the API confirms the order.
 
 ## Webhook checks
 

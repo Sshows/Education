@@ -29,6 +29,42 @@ DEBUG=false
 SESSION_SECRET=<random 32+ chars>
 TELEGRAM_BOT_TOKEN=<from @BotFather — Railway Variables only, never commit>
 OPENAI_API_KEY=<optional>
+PAYMENTS_ENABLED=true
+PAYMENTS_DEFAULT_PROVIDER=telegram_stars
+PAYMENTS_ENABLE_TELEGRAM_STARS=true
+PAYMENTS_ENABLE_HALYK=false
+PAYMENTS_ENABLE_FREEDOM=false
+PAYMENTS_ENABLE_KASPI=false
+PAYMENTS_ENABLE_CRYPTO=false
+PREMIUM_DAILY_FORECAST_LIMIT=50
+PREMIUM_DAILY_AI_LIMIT=100
+HALYK_EPAY_ENABLED=false
+HALYK_EPAY_TEST_MODE=true
+HALYK_EPAY_TERMINAL_ID=
+HALYK_EPAY_CLIENT_ID=
+HALYK_EPAY_CLIENT_SECRET=
+HALYK_EPAY_SUCCESS_URL=
+HALYK_EPAY_FAILURE_URL=
+FREEDOM_PAY_ENABLED=false
+FREEDOM_PAY_TEST_MODE=true
+FREEDOM_PAY_MERCHANT_ID=
+FREEDOM_PAY_SECRET_KEY=
+FREEDOM_PAY_RESULT_URL=
+FREEDOM_PAY_SUCCESS_URL=
+FREEDOM_PAY_FAILURE_URL=
+KASPI_ENABLED=false
+KASPI_PROVIDER=
+KASPI_API_URL=
+KASPI_API_KEY=
+KASPI_WEBHOOK_SECRET=
+CRYPTO_ENABLED=false
+CRYPTO_PROVIDER=
+CRYPTO_API_KEY=
+CRYPTO_WEBHOOK_SECRET=
+CRYPTO_ALLOWED_ASSETS=USDT,TON
+CRYPTO_NETWORKS=TON,TRC20
+SUPPORT_EMAIL=
+SUPPORT_TELEGRAM_USERNAME=
 ```
 
 ### Bot service
@@ -43,6 +79,8 @@ TELEGRAM_AUTO_SET_MENU_BUTTON=true
 TELEGRAM_AUTO_SET_COMMANDS=true
 API_URL=https://API_DOMAIN
 ENVIRONMENT=production
+SUPPORT_EMAIL=
+SUPPORT_TELEGRAM_USERNAME=
 ```
 
 ### Worker service
@@ -86,3 +124,6 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 - Never hardcode `TELEGRAM_BOT_TOKEN` — add it only in Railway Variables UI
 - `TELEGRAM_WEBHOOK_SECRET` must be set in production (validated on every request)
 - Frontend never gets the token
+- Telegram Stars is the default in-Telegram payment method for digital access
+- External providers stay disabled until their credentials and webhook verification are configured
+- Never store card data, crypto private keys, or grant access from screenshots

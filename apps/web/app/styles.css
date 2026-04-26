@@ -344,7 +344,7 @@ a.card:active { transform: scale(0.98); }
   z-index: 30;
   display: grid;
   max-width: 560px;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 2px;
   margin: 0 auto;
   padding: 8px 6px max(8px, env(safe-area-inset-bottom, 0px));
@@ -379,6 +379,114 @@ a.card:active { transform: scale(0.98); }
 }
 
 .bottom-nav__icon { font-size: 20px; line-height: 1; }
+
+/* ---------- Payments ---------- */
+.pricing-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pricing-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+}
+
+.pricing-card--paid {
+  border-color: rgba(79,124,255,0.32);
+  background: linear-gradient(135deg, rgba(79,124,255,0.12), rgba(0,212,170,0.06));
+}
+
+.pricing-card h2 {
+  margin: 10px 0 0;
+  font-size: 22px;
+}
+
+.price-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.price-line strong {
+  font-size: 26px;
+}
+
+.price-line span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.feature-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-list li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--ink);
+}
+
+.feature-list li::before {
+  content: '';
+  position: absolute;
+  top: 0.7em;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--teal);
+}
+
+.premium-lock {
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-lock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 20%, rgba(15,21,35,0.7));
+}
+
+.premium-lock > * {
+  position: relative;
+  z-index: 1;
+}
+
+.premium-lock__label {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(79,124,255,0.18);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.trust-card,
+.payment-state {
+  margin-top: 14px;
+}
+
+.payment-state--success {
+  border-color: rgba(16,185,129,0.38);
+  background: rgba(16,185,129,0.08);
+}
 
 /* ---------- Forms ---------- */
 .wizard {

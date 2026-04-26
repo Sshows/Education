@@ -3,4 +3,4 @@
 // a stable path without needing a full symlinked package.
 // All logic lives in packages/shared/src/ent-subjects.ts — do not duplicate!
 
-export * from '../../packages/shared/src/ent-subjects';
+export * from '../../../packages/shared/src/ent-subjects';

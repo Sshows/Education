@@ -150,7 +150,15 @@ def get_source(source_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/ai/chat")
-def ai_chat(payload: dict):
+def ai_chat(payload: dict, db: Session = Depends(get_db)):
+    if payload.get("consume_credit"):
+        from app.services.payments.errors import PaymentError
+        from app.services.payments.service import PaymentService
+
+        try:
+            PaymentService(db).consume_credit(payload.get("telegram_id"), "ai_questions")
+        except PaymentError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc))
     return {
         "answer": "Подтверждённых данных в источниках нет.",
         "sources": [],

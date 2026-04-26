@@ -3,7 +3,7 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
-from app.bot import BOT_COMMANDS, _ALIAS_PAIRS, _COMBO_RE, _SCORE_RE, start_keyboard
+from app.bot import BOT_COMMANDS, PAYMENT_PRODUCTS, _ALIAS_PAIRS, _COMBO_RE, _SCORE_RE, pricing_keyboard, start_keyboard
 from app.config import settings
 from app.webhook import app, dp
 
@@ -19,6 +19,27 @@ def test_start_keyboard_contains_web_app_buttons():
     assert settings.webapp_url("/programs") in urls
     assert settings.webapp_url("/ai") in urls
     assert settings.webapp_url("/deadlines") in urls
+    assert settings.webapp_url("/pricing") in urls
+
+
+def test_premium_keyboard_shows_products():
+    keyboard = pricing_keyboard()
+    labels = [button.text for row in keyboard.inline_keyboard for button in row]
+
+    assert any("Полный прогноз" in label for label in labels)
+    assert any("AI-пакет" in label for label in labels)
+    assert any("Premium" in label for label in labels)
+
+
+def test_payment_products_have_stars_prices():
+    assert PAYMENT_PRODUCTS["pro_once"]["stars_price"] == 50
+    assert PAYMENT_PRODUCTS["ai_pack"]["stars_price"] == 100
+    assert PAYMENT_PRODUCTS["premium_month"]["stars_price"] == 250
+
+
+def test_bot_commands_include_payment_commands():
+    commands = {command.command for command in BOT_COMMANDS}
+    assert {"premium", "buy", "payments", "restore", "support"} <= commands
 
 
 # -------- Score detection --------

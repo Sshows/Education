@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { FeatureLock } from '../../../components/FeatureLock';
 import { DEMO_PROGRAM_GROUPS, getSubjectCombinationByPair, type SubjectId } from '../../../lib/ent-subjects';
 import { DISCLAIMER_TEMPLATE } from '../../../../../packages/shared/src/constants';
 
@@ -173,6 +174,11 @@ function ResultContent() {
           погрешность возрастает.
         </p>
       </section>
+
+      <FeatureLock
+        title="Разблокировать полный прогноз"
+        text="Premium покажет расширенные рекомендации, разбор источников, comparison по вузам и PDF-отчёт."
+      />
 
       {/* Reason cards */}
       <section className="card" style={{ marginTop: 10 }}>

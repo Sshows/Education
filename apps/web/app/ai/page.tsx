@@ -1,3 +1,5 @@
+import { FeatureLock } from '../../components/FeatureLock';
+
 export default function AIPage() {
   return (
     <main>
@@ -13,6 +15,10 @@ export default function AIPage() {
         <h2>Ответ</h2>
         <p>Для демо-профиля стоит проверить МУИТ, Astana IT и SDU. Подтверждённых свежих данных по итоговому конкурсу пока нет.</p>
       </section>
+      <FeatureLock
+        title="AI-кредиты закончились"
+        text="Купите AI-пакет или Premium, чтобы задавать вопросы по источникам и сохранять ответы."
+      />
     </main>
   );
 }

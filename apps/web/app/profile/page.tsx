@@ -17,6 +17,8 @@ export default function ProfilePage() {
           <strong>B057</strong>
         </div>
         <Link className="button" href="/calculator">Новый расчёт</Link>
+        <Link className="ghost-button" href="/profile/billing">Платежи и доступ</Link>
+        <Link className="secondary-button" href="/pricing">Premium</Link>
       </section>
     </main>
   );
