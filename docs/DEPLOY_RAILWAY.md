@@ -1,109 +1,88 @@
-# Railway deployment
-
-This project is a Railway monorepo. Create one Railway service per app and set Root Directory explicitly.
+# ENT Grant KZ — Railway Deploy Guide
 
 ## Services
 
-| Service | Root Directory | Start Command | Public URL |
-| --- | --- | --- | --- |
-| `ent-grant-web` | `apps/web` | `npm run start -- -p $PORT` | `https://ent-grant-web-production.up.railway.app` |
-| `ent-grant-api` | `apps/api` | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | Railway generated domain |
-| `ent-grant-bot` | `apps/bot` | `python -m app.webhook` | Railway generated domain |
-| `ent-grant-worker` | `apps/worker` | `python -m app.worker` | private worker |
-| `PostgreSQL` | Railway plugin | managed | internal |
-| `Redis` | Railway plugin | managed | internal |
+| Service | Start command | Port |
+|---------|-------------|------|
+| `web` | `npm run start` (Next.js) | 3000 |
+| `api` | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | $PORT |
+| `bot` | `uvicorn app.webhook:app --host 0.0.0.0 --port $PORT` | $PORT |
+| `worker` | `python -m app.worker` | — |
 
-If Railway builds the wrong stack, the Root Directory is usually wrong. Set the service Root Directory above, or set `RAILWAY_DOCKERFILE_PATH=Dockerfile` for the service.
+## Environment Variables
 
-Railway config files are in:
+### Web service
 
-```text
-railway/api.railway.json
-railway/web.railway.json
-railway/bot.railway.json
-railway/worker.railway.json
 ```
-
-## Variables
-
-### ent-grant-web
-
-```text
-NEXT_PUBLIC_API_URL=https://ENT_GRANT_API_DOMAIN
+NEXT_PUBLIC_API_URL=https://API_DOMAIN
 NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=entgrant_kz_bot
 NODE_ENV=production
 ```
 
-### ent-grant-api
+### API service
 
-```text
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-REDIS_URL=${{Redis.REDIS_URL}}
+```
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
 ENVIRONMENT=production
 DEBUG=false
-SESSION_SECRET=generate_long_random_secret
-TELEGRAM_BOT_TOKEN=same_bot_token_for_initdata_validation
-OPENAI_API_KEY=optional
+SESSION_SECRET=<random 32+ chars>
+TELEGRAM_BOT_TOKEN=<from @BotFather — Railway Variables only, never commit>
+OPENAI_API_KEY=<optional>
 ```
 
-### ent-grant-bot
+### Bot service
 
-```text
-TELEGRAM_BOT_TOKEN=token_from_BotFather
+```
+TELEGRAM_BOT_TOKEN=<from @BotFather — Railway Variables only>
 TELEGRAM_WEBAPP_URL=https://ent-grant-web-production.up.railway.app
-TELEGRAM_WEBHOOK_URL=https://ENT_GRANT_BOT_DOMAIN/webhook
-TELEGRAM_WEBHOOK_SECRET=generate_long_random_secret
+TELEGRAM_WEBHOOK_URL=https://BOT_DOMAIN/webhook
+TELEGRAM_WEBHOOK_SECRET=<random 32+ chars>
 TELEGRAM_AUTO_SET_WEBHOOK=true
 TELEGRAM_AUTO_SET_MENU_BUTTON=true
 TELEGRAM_AUTO_SET_COMMANDS=true
-API_URL=https://ENT_GRANT_API_DOMAIN
+API_URL=https://API_DOMAIN
 ENVIRONMENT=production
 ```
 
-### ent-grant-worker
+### Worker service
 
-```text
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-REDIS_URL=${{Redis.REDIS_URL}}
-API_URL=https://ENT_GRANT_API_DOMAIN
+```
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+API_URL=https://API_DOMAIN
 ENVIRONMENT=production
 ```
 
-## Deploy sequence
+## Webhook verification
 
-1. Create PostgreSQL and Redis in Railway.
-2. Create `ent-grant-api`, Root Directory `apps/api`, generate domain, add variables.
-3. Create `ent-grant-web`, Root Directory `apps/web`, add `NEXT_PUBLIC_API_URL`, deploy.
-4. Create `ent-grant-bot`, Root Directory `apps/bot`, generate domain.
-5. Set `TELEGRAM_WEBHOOK_URL=https://ENT_GRANT_BOT_DOMAIN/webhook`.
-6. Set `TELEGRAM_AUTO_SET_WEBHOOK=true` and redeploy bot.
-7. Create `ent-grant-worker`, Root Directory `apps/worker`, add Redis/Postgres variables.
-
-## Post-deploy checks
-
-```text
-https://ENT_GRANT_API_DOMAIN/health
-https://ENT_GRANT_API_DOMAIN/docs
-https://ent-grant-web-production.up.railway.app
-https://ENT_GRANT_BOT_DOMAIN/health
-```
-
-Then:
+After deploying the bot:
 
 ```bash
-bash scripts/get_telegram_webhook_info.sh
+curl https://BOT_DOMAIN/health
+# {"status":"ok","service":"bot"}
+
+curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+# Check url, last_error_date
 ```
 
-Finally open Telegram and send:
+## Domains
 
-```text
-/start
-```
+- Web: Railway auto-assigns `*.up.railway.app` or use custom domain
+- Bot: Must have a public HTTPS domain (required for Telegram webhook)
+- `TELEGRAM_WEBAPP_URL` must point to the **web** service domain  
+- `TELEGRAM_WEBHOOK_URL` must point to the **bot** service domain
 
-## Security
+## Redeploy steps
 
-- Never commit `.env`.
-- Never commit or log `TELEGRAM_BOT_TOKEN`.
-- Production bot webhook requires `TELEGRAM_WEBHOOK_SECRET`.
-- Frontend Telegram user data is not trusted until backend validates `initData`.
-- Use HTTPS for `TELEGRAM_WEBAPP_URL` and `TELEGRAM_WEBHOOK_URL`.
+1. Push to `origin main`
+2. Railway auto-deploys if connected to GitHub  
+   Or: Run `railway up` from the service directory
+3. Check logs: `railway logs --tail`
+4. Verify webhook: see above
+
+## Security notes
+
+- Never hardcode `TELEGRAM_BOT_TOKEN` — add it only in Railway Variables UI
+- `TELEGRAM_WEBHOOK_SECRET` must be set in production (validated on every request)
+- Frontend never gets the token

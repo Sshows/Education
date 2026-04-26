@@ -7,6 +7,7 @@ import numpy as np
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.core.ent_subjects import validate_subjects_for_program
 from app.models.models import AdmissionThreshold, EntStatistics, GrantAllocation, HistoricalCutoff, ProgramGroup
 from app.schemas.forecast import ApplicantProfileIn
 
@@ -30,8 +31,15 @@ class ForecastService:
         pg = self.db.scalar(select(ProgramGroup).where(ProgramGroup.id == program_group_id))
         if not pg:
             raise ValueError("Program group not found")
-        if (profile.profile_subject_1, profile.profile_subject_2) != (pg.profile_subject_1, pg.profile_subject_2):
-            raise ValueError("Profile subjects mismatch")
+
+        # Order-insensitive subject pair validation
+        mismatch_msg = validate_subjects_for_program(
+            pg.code,
+            profile.profile_subject_1,
+            profile.profile_subject_2,
+        )
+        if mismatch_msg:
+            raise ValueError(mismatch_msg)
 
         threshold = self.db.scalar(
             select(AdmissionThreshold)
@@ -124,6 +132,7 @@ class ForecastService:
         source_ids = [threshold.source_id] + [c.source_id for c in cutoffs]
 
         explanation = {
+            "subject_pair_key": profile.pair_key(),
             "threshold_check": {
                 "grant_min_score": threshold.grant_min_score,
                 "paid_min_score": threshold.paid_min_score,

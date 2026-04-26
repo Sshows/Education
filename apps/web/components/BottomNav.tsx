@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { href: '/', label: 'Главная' },
-  { href: '/calculator', label: 'Расчёт' },
-  { href: '/programs', label: 'Программы' },
-  { href: '/universities', label: 'Вузы' },
-  { href: '/profile', label: 'Профиль' },
+  { href: '/', label: 'Главная', icon: '🏠' },
+  { href: '/calculator', label: 'Расчёт', icon: '🎯' },
+  { href: '/programs', label: 'Программы', icon: '📋' },
+  { href: '/universities', label: 'Вузы', icon: '🏛' },
+  { href: '/profile', label: 'Профиль', icon: '👤' },
 ];
 
 export function BottomNav() {
@@ -19,7 +19,13 @@ export function BottomNav() {
       {navItems.map((item) => {
         const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
         return (
-          <Link className={active ? 'bottom-nav__item bottom-nav__item--active' : 'bottom-nav__item'} href={item.href} key={item.href}>
+          <Link
+            className={active ? 'bottom-nav__item bottom-nav__item--active' : 'bottom-nav__item'}
+            href={item.href}
+            key={item.href}
+            aria-current={active ? 'page' : undefined}
+          >
+            <span className="bottom-nav__icon" aria-hidden="true">{item.icon}</span>
             {item.label}
           </Link>
         );

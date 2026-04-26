@@ -6,18 +6,19 @@ import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from './BottomNav';
 import { applyTelegramTheme, authTelegram, getTelegramWebApp, isTelegramWebApp } from '../lib/telegram';
 
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'entgrant_kz_bot';
+
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [insideTelegram, setInsideTelegram] = useState(true);
+  const [insideTelegram, setInsideTelegram] = useState(true); // optimistic: assume inside
 
   useEffect(() => {
     const webApp = getTelegramWebApp();
-    setInsideTelegram(isTelegramWebApp());
+    const isTg = isTelegramWebApp();
+    setInsideTelegram(isTg);
 
-    if (!webApp) {
-      return;
-    }
+    if (!webApp) return;
 
     webApp.ready();
     webApp.expand();
@@ -28,9 +29,7 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const webApp = getTelegramWebApp();
     const backButton = webApp?.BackButton;
-    if (!backButton) {
-      return;
-    }
+    if (!backButton) return;
 
     const goBack = () => {
       if (pathname === '/') {
@@ -54,7 +53,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {!insideTelegram ? <div className="telegram-banner">Откройте через Telegram для полного опыта</div> : null}
+      {!insideTelegram && (
+        <div className="telegram-banner">
+          <span>Откройте через Telegram для полного опыта</span>
+          <a href={`https://t.me/${BOT_USERNAME}`} rel="noopener noreferrer" target="_blank">
+            Открыть @{BOT_USERNAME} →
+          </a>
+        </div>
+      )}
       <div className="app-shell">
         {children}
         <BottomNav />
