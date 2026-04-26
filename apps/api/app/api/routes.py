@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,7 +10,7 @@ from app.db.session import get_db
 from app.models.models import ProgramGroup, SourceDocument, University, User
 from app.schemas.forecast import ForecastRequest, ForecastResponse
 from app.services.forecast_service import ForecastService
-from app.utils.telegram import validate_telegram_init_data
+from app.utils.telegram import parse_telegram_user, validate_telegram_init_data
 
 router = APIRouter(prefix="/api")
 
@@ -15,21 +18,49 @@ router = APIRouter(prefix="/api")
 @router.post("/auth/telegram")
 def auth_telegram(payload: dict, db: Session = Depends(get_db)):
     init_data = payload.get("initData", "")
-    if not validate_telegram_init_data(init_data, settings.telegram_bot_token):
-        raise HTTPException(status_code=401, detail="Invalid Telegram initData")
-    tg = payload.get("telegram", {})
+    if init_data:
+        if not validate_telegram_init_data(init_data, settings.telegram_initdata_token):
+            raise HTTPException(status_code=401, detail="Invalid Telegram initData")
+        tg = parse_telegram_user(init_data)
+        auth_method = "telegram"
+    elif settings.environment == "development":
+        tg = payload.get("telegram") or {"id": 1, "first_name": "Dev", "language_code": "ru"}
+        auth_method = "development"
+    else:
+        raise HTTPException(status_code=401, detail="Telegram initData is required")
+
+    telegram_id = tg.get("id")
+    if not telegram_id:
+        raise HTTPException(status_code=401, detail="Telegram user is missing")
+
     user = db.scalar(select(User).where(User.telegram_id == tg.get("id")))
     if not user:
-        user = User(telegram_id=tg["id"])
+        user = User(telegram_id=telegram_id)
         db.add(user)
     user.first_name = tg.get("first_name")
     user.last_name = tg.get("last_name")
     user.username = tg.get("username")
     user.language_code = tg.get("language_code")
     db.commit()
-    return {"token": "session-token-placeholder", "user_id": user.id}
+    db.refresh(user)
 
-
+    token = hmac.new(
+        settings.session_secret.encode(),
+        f"{user.telegram_id}:{user.id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "token": f"tg_{token}",
+        "auth_method": auth_method,
+        "user": {
+            "id": user.id,
+            "telegram_id": user.telegram_id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "username": user.username,
+            "language_code": user.language_code,
+        },
+    }
 
 
 @router.get("/profile")
@@ -40,6 +71,26 @@ def get_profile():
 @router.put("/profile")
 def put_profile(payload: dict):
     return {"profile": payload}
+
+
+@router.get("/bot/profile")
+def bot_profile():
+    return {
+        "name": "ENT Grant",
+        "commands": ["/start", "/calc", "/programs", "/universities", "/deadlines", "/profile", "/ask", "/sources", "/help"],
+    }
+
+
+@router.get("/analytics/summary")
+def analytics_summary():
+    return {
+        "forecasts_total": 0,
+        "active_users_7d": 0,
+        "top_programs": [],
+        "source_status": "demo",
+    }
+
+
 @router.post("/forecast", response_model=ForecastResponse)
 def forecast(req: ForecastRequest, db: Session = Depends(get_db)):
     res = ForecastService(db).calculate(req.profile, req.university_id, req.program_group_id)

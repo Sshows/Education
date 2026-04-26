@@ -1,1 +1,3 @@
-export function TelegramButtons() { return <div className="small">Telegram BackButton/MainButton integration placeholder</div>; }
+export function TelegramButtons() {
+  return <span className="small">Telegram controls active when opened as Mini App.</span>;
+}

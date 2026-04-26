@@ -1,1 +1,3 @@
-export function SourceBadge() { return <span className="small">source badge</span>; }
+export function SourceBadge({ label }: { label: string }) {
+  return <span className="tag">{label}</span>;
+}

@@ -1,4 +1,15 @@
 [project]
 name = "ent-grant-bot"
 version = "0.1.0"
-dependencies = ["aiogram>=3.7", "fastapi>=0.115", "uvicorn>=0.30"]
+requires-python = ">=3.12"
+dependencies = [
+  "aiogram>=3.7",
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  "pydantic-settings>=2.3",
+  "uvicorn>=0.30",
+  "pytest>=8.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
