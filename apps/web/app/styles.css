@@ -906,6 +906,99 @@ a.card:active { transform: scale(0.98); }
   line-height: 1.45;
 }
 
+/* ---------- Feature list ---------- */
+.feature-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.feature-list li::before {
+  content: '✓ ';
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* ---------- Pricing ---------- */
+.pricing-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pricing-card {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  padding: 18px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.pricing-card--paid {
+  background: linear-gradient(135deg, rgba(79,124,255,0.12) 0%, rgba(0,212,170,0.06) 100%);
+  border-color: rgba(79,124,255,0.25);
+}
+
+.price-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.price-line strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--teal);
+}
+
+/* ---------- Chat bubbles ---------- */
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--glass-border);
+}
+
+.chat-bubble--user {
+  align-self: flex-end;
+  border-radius: 18px 18px 4px 18px;
+  background: linear-gradient(135deg, #4f7cff 0%, #7c4fff 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.chat-bubble--assistant {
+  align-self: flex-start;
+  border-radius: 18px 18px 18px 4px;
+  background: var(--surface-2);
+}
+
+/* ---------- Typing indicator ---------- */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
 /* ---------- Page transitions ---------- */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(12px); }
