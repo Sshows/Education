@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,10 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.models import ProgramGroup, SourceDocument, University, User
 from app.schemas.forecast import ForecastRequest, ForecastResponse
+from app.services.analysis_service import AnalysisService
 from app.services.forecast_service import ForecastService
+from app.services.payments.errors import PaymentError
+from app.services.payments.service import PaymentService
 from app.utils.telegram import parse_telegram_user, validate_telegram_init_data
 
 router = APIRouter(prefix="/api")
@@ -91,6 +94,58 @@ def analytics_summary():
     }
 
 
+@router.get("/specialties")
+def list_specialties(subject: str | None = None, db: Session = Depends(get_db)):
+    return AnalysisService(db).list_specialties(subject)
+
+
+@router.post("/analyze")
+def analyze(payload: dict, db: Session = Depends(get_db)):
+    try:
+        return AnalysisService(db).analyze(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/payment/create")
+async def create_legacy_payment(payload: dict, db: Session = Depends(get_db)):
+    service = PaymentService(db)
+    try:
+        order, checkout = await service.create_order(
+            product_code=payload.get("product_code") or "pro_once",
+            provider=payload.get("provider") or "aipay",
+            telegram_id=payload.get("tg_id") or payload.get("telegram_id"),
+            return_url=payload.get("return_url"),
+            metadata={
+                "source": "legacy_aipay_endpoint",
+                "analysis_id": payload.get("analysis_id"),
+                **(payload.get("metadata") or {}),
+            },
+            idempotency_key=payload.get("idempotency_key"),
+        )
+        return {
+            "payment_id": order.id,
+            "order_id": order.id,
+            "status": order.status,
+            "provider": order.provider,
+            "payment_url": checkout.checkout_url,
+            "checkout_url": checkout.checkout_url,
+        }
+    except PaymentError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
+
+
+@router.post("/payment/webhook")
+async def legacy_payment_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.json()
+    headers = {key.lower(): value for key, value in request.headers.items()}
+    try:
+        event = await PaymentService(db).record_webhook("aipay", payload, headers)
+        return {"ok": True, "processed": event.processed, "event_id": event.id}
+    except PaymentError as exc:
+        return {"ok": False, "processed": False, "error": str(exc)}
+
+
 @router.post("/forecast", response_model=ForecastResponse)
 def forecast(req: ForecastRequest, db: Session = Depends(get_db)):
     res = ForecastService(db).calculate(req.profile, req.university_id, req.program_group_id)
@@ -102,6 +157,7 @@ def forecast(req: ForecastRequest, db: Session = Depends(get_db)):
         explanation=res.explanation,
         source_ids=res.source_ids,
         status=res.status,
+        subject_pair_key=res.explanation.get("subject_pair_key", ""),
     )
 
 

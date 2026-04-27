@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { useTelegram } from '../../hooks/useTelegram';
-import { fallbackProducts, fetchProducts, paymentContextLabel, startStarsPurchase, type PaymentProduct } from '../../lib/payments';
+import { useTelegram } from '../hooks/useTelegram';
+import {
+  fallbackProducts,
+  fetchProducts,
+  isAipayCheckoutEnabled,
+  paymentContextLabel,
+  startAipayCheckout,
+  startStarsPurchase,
+  type PaymentProduct,
+} from '../lib/payments';
 
 const FEATURE_LABELS: Record<string, string> = {
   basic_calculator: '🎯 Базовый калькулятор',
@@ -23,6 +31,7 @@ export function PricingClient() {
   const { hapticImpact, hapticNotify, isInsideTelegram } = useTelegram();
   const [products, setProducts] = useState<PaymentProduct[]>(fallbackProducts);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [externalPurchasing, setExternalPurchasing] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchProducts().then(setProducts);
@@ -38,6 +47,17 @@ export function PricingClient() {
       hapticNotify('error');
     } finally {
       setPurchasing(null);
+    }
+  };
+
+  const handleAipay = async (productCode: string) => {
+    hapticImpact('medium');
+    setExternalPurchasing(productCode);
+    try {
+      await startAipayCheckout(productCode);
+    } catch {
+      hapticNotify('error');
+      setExternalPurchasing(null);
     }
   };
 
@@ -112,9 +132,21 @@ export function PricingClient() {
                     >
                       {isBuying ? '⟳ Открытие...' : `💫 Оплатить ${product.stars_price} Stars`}
                     </button>
-                    <button className="ghost-button" disabled style={{ width: '100%', fontSize: 13 }} type="button">
-                      Карта / Kaspi / Freedom — скоро
-                    </button>
+                    {isAipayCheckoutEnabled() ? (
+                      <button
+                        className="ghost-button"
+                        disabled={externalPurchasing === product.code}
+                        style={{ width: '100%', fontSize: 13 }}
+                        type="button"
+                        onClick={() => { void handleAipay(product.code); }}
+                      >
+                        {externalPurchasing === product.code ? 'Открываем checkout...' : 'Карта через AiPay'}
+                      </button>
+                    ) : (
+                      <button className="ghost-button" disabled style={{ width: '100%', fontSize: 13 }} type="button">
+                        Карта / Kaspi / Freedom — включается после настройки
+                      </button>
+                    )}
                   </>
                 ) : (
                   <Link className="secondary-button" href="/calculator" style={{ width: '100%', justifyContent: 'center' }}>

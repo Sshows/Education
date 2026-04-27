@@ -16,6 +16,7 @@
 ```
 NEXT_PUBLIC_API_URL=https://API_DOMAIN
 NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=entgrant_kz_bot
+NEXT_PUBLIC_PAYMENTS_ENABLE_AIPAY=false
 NODE_ENV=production
 ```
 
@@ -36,6 +37,7 @@ PAYMENTS_ENABLE_HALYK=false
 PAYMENTS_ENABLE_FREEDOM=false
 PAYMENTS_ENABLE_KASPI=false
 PAYMENTS_ENABLE_CRYPTO=false
+PAYMENTS_ENABLE_AIPAY=false
 PREMIUM_DAILY_FORECAST_LIMIT=50
 PREMIUM_DAILY_AI_LIMIT=100
 HALYK_EPAY_ENABLED=false
@@ -63,6 +65,13 @@ CRYPTO_API_KEY=
 CRYPTO_WEBHOOK_SECRET=
 CRYPTO_ALLOWED_ASSETS=USDT,TON
 CRYPTO_NETWORKS=TON,TRC20
+AIPAY_ENABLED=false
+AIPAY_TEST_MODE=true
+AIPAY_API_URL=
+AIPAY_SECRET=
+AIPAY_SUCCESS_URL=https://WEB_DOMAIN/payment/success
+AIPAY_FAILURE_URL=https://WEB_DOMAIN/payment/cancel
+AIPAY_CALLBACK_URL=https://API_DOMAIN/api/payment/webhook
 SUPPORT_EMAIL=
 SUPPORT_TELEGRAM_USERNAME=
 ```
@@ -126,4 +135,22 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 - Frontend never gets the token
 - Telegram Stars is the default in-Telegram payment method for digital access
 - External providers stay disabled until their credentials and webhook verification are configured
+- AiPay compatibility endpoints are `/api/payment/create` and `/api/payment/webhook`; enable them only after AiPay merchant details are confirmed
 - Never store card data, crypto private keys, or grant access from screenshots
+
+## Customer MVP checklist
+
+After deploy, these product endpoints should respond:
+
+```bash
+curl "https://API_DOMAIN/api/specialties?subject=math_cs"
+curl -X POST "https://API_DOMAIN/api/analyze" \
+  -H "Content-Type: application/json" \
+  -d '{"tg_id":123456789,"score":110,"subject_pair":"math_cs","quota":"general","spec_codes":["B057","B058"]}'
+```
+
+Expected behavior:
+
+- First analysis for a Telegram user returns `is_free=true`.
+- Second analysis returns `paywall=true` unless premium entitlement exists.
+- AiPay remains disabled unless `PAYMENTS_ENABLE_AIPAY=true`, `AIPAY_ENABLED=true`, and all AiPay URLs/secrets are configured.

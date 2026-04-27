@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FeatureLock } from '../../../components/FeatureLock';
 import { DEMO_PROGRAM_GROUPS, getSubjectCombinationByPair, type SubjectId } from '../../../lib/ent-subjects';
+import { getTelegramWebApp } from '../../../lib/telegram';
 import { DISCLAIMER_TEMPLATE } from '../../../../../packages/shared/src/constants';
 
 const DEMO_UNIVERSITIES: Record<string, { name: string; city: string }> = {
@@ -14,13 +15,48 @@ const DEMO_UNIVERSITIES: Record<string, { name: string; city: string }> = {
   kaznu: { name: 'КазНУ аль-Фараби', city: 'Алматы' },
 };
 
+type AnalysisResult = {
+  spec_code: string;
+  name: string;
+  chance: number;
+  predicted_2025: number;
+  gap: number;
+  trend: string;
+  history: { year: number; min: number }[];
+};
+
+type StoredAnalysis = {
+  analysis_id?: number;
+  is_free?: boolean;
+  has_paid_access?: boolean;
+  paywall?: boolean;
+  subject_pair?: string;
+  score?: number;
+  quota?: string;
+  results?: AnalysisResult[];
+  recommendations?: AnalysisResult[];
+  card_url?: string | null;
+  share_text?: string;
+};
+
 function ResultContent() {
   const params = useSearchParams();
+  const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('entGrant:lastAnalysis');
+      if (raw) setAnalysis(JSON.parse(raw));
+    } catch {
+      setAnalysis(null);
+    }
+  }, []);
+
   const scoreParam = params.get('score') ?? '82';
   const programCode = params.get('program') ?? 'B057';
   const comboParam = params.get('combo') ?? 'informatics+mathematics';
 
-  const score = parseInt(scoreParam, 10);
+  const score = analysis?.score ?? parseInt(scoreParam, 10);
 
   // Resolve combo
   const [s1, s2] = comboParam.split('+') as [SubjectId, SubjectId];
@@ -28,9 +64,10 @@ function ResultContent() {
 
   // Demo program
   const pg = DEMO_PROGRAM_GROUPS.find((p) => p.code === programCode) ?? DEMO_PROGRAM_GROUPS[0];
+  const apiResult = analysis?.results?.find((item) => item.spec_code === programCode) ?? analysis?.results?.[0];
 
   // Demo thresholds (replace with real API data when available)
-  const historicalCutoff = 78;
+  const historicalCutoff = apiResult?.predicted_2025 ?? 78;
   const grantMinScore = 75;
   const paidMinScore = 50;
   const errorMargin = 9;
@@ -39,9 +76,9 @@ function ResultContent() {
   const grantEligible = score >= grantMinScore;
   const paidEligible = score >= paidMinScore;
   const margin = score - historicalCutoff;
-  const probability = !grantEligible
+  const probability = apiResult?.chance ?? (!grantEligible
     ? 0
-    : Math.min(99, Math.max(1, Math.round(50 + (margin / 15) * 40)));
+    : Math.min(99, Math.max(1, Math.round(50 + (margin / 15) * 40))));
 
   const cutoffPct = Math.min(100, Math.round((historicalCutoff / 140) * 100));
   const scorePct = Math.min(100, Math.round((score / 140) * 100));
@@ -54,6 +91,20 @@ function ResultContent() {
     low: 'Низкая',
   };
 
+  const handleShare = () => {
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'entgrant_kz_bot';
+    const text = encodeURIComponent(analysis?.share_text ?? `Проверил шансы на грант: ${programCode} — ${probability}%`);
+    const url = encodeURIComponent(`https://t.me/${botUsername}`);
+    const shareUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+    const webApp = getTelegramWebApp();
+    webApp?.HapticFeedback?.impactOccurred?.('light');
+    if (webApp?.openTelegramLink) {
+      webApp.openTelegramLink(shareUrl);
+    } else {
+      window.location.href = shareUrl;
+    }
+  };
+
   return (
     <main>
       <p className="eyebrow">Результат</p>
@@ -61,8 +112,8 @@ function ResultContent() {
         {probability >= 60 ? 'Шанс выше среднего' : probability >= 30 ? 'Умеренный шанс' : 'Низкий шанс'}
       </h1>
       <p className="page-subtitle">
-        Демо-прогноз для <strong>{programCode}</strong>.{' '}
-        <span className="demo-badge">Демо-данные</span>
+        {apiResult ? 'Расчёт сохранён через API' : 'Демо-прогноз'} для <strong>{apiResult?.spec_code ?? programCode}</strong>.{' '}
+        <span className="demo-badge">{apiResult ? 'API' : 'Демо-данные'}</span>
       </p>
 
       {/* Hero: probability ring + metrics */}
@@ -133,7 +184,7 @@ function ResultContent() {
           {combo && (
             <span className="tag">📚 {combo.label.ru}</span>
           )}
-          <span className="tag">📋 {pg.code} — {pg.name.ru}</span>
+          <span className="tag">📋 {apiResult?.spec_code ?? pg.code} — {apiResult?.name ?? pg.name.ru}</span>
           <span className="tag">🏛 {pg.category}</span>
           <span className="demo-badge">Демо-данные</span>
         </div>
@@ -180,6 +231,16 @@ function ResultContent() {
         text="Premium покажет расширенные рекомендации, разбор источников, comparison по вузам и PDF-отчёт."
       />
 
+      <section className="card" style={{ marginTop: 10 }} aria-label="Поделиться">
+        <h2>Поделиться результатом</h2>
+        <p className="small" style={{ marginTop: 6 }}>
+          Отправьте другу ссылку на бота. Первый анализ в Mini App остаётся бесплатным.
+        </p>
+        <button className="secondary-button" type="button" onClick={handleShare} style={{ width: '100%', marginTop: 12 }}>
+          Поделиться в Telegram
+        </button>
+      </section>
+
       {/* Reason cards */}
       <section className="card" style={{ marginTop: 10 }}>
         <h2>Почему такой результат</h2>
@@ -217,15 +278,15 @@ function ResultContent() {
       <section className="card" style={{ marginTop: 10 }} aria-label="Рекомендации">
         <h2>Похожие программы</h2>
         <div className="grid" style={{ gap: 8, marginTop: 10 }}>
-          {DEMO_PROGRAM_GROUPS.filter((p) => p.subjectPairKey === pg.subjectPairKey && p.code !== pg.code)
+          {(analysis?.recommendations ?? DEMO_PROGRAM_GROUPS.filter((p) => p.subjectPairKey === pg.subjectPairKey && p.code !== pg.code))
             .slice(0, 3)
             .map((p) => (
-              <div key={p.code} className="program-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={'code' in p ? p.code : p.spec_code} className="program-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <strong style={{ fontSize: 14 }}>{p.code}</strong>
-                  <p style={{ fontSize: 13, margin: '2px 0 0', color: 'var(--muted)' }}>{p.name.ru}</p>
+                  <strong style={{ fontSize: 14 }}>{'code' in p ? p.code : p.spec_code}</strong>
+                  <p style={{ fontSize: 13, margin: '2px 0 0', color: 'var(--muted)' }}>{'code' in p ? p.name.ru : p.name}</p>
                 </div>
-                <span className="demo-badge">Демо</span>
+                <span className="demo-badge">{'chance' in p ? `${p.chance}%` : 'Демо'}</span>
               </div>
             ))}
         </div>

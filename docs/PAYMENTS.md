@@ -48,7 +48,7 @@ The confirmation must include the Telegram `telegram_payment_charge_id`, `total_
 
 ## External providers
 
-Halyk ePay, Freedom Pay, Kaspi and Crypto are adapters behind feature flags. They are disabled until Railway env variables are configured.
+Halyk ePay, Freedom Pay, Kaspi, AiPay and Crypto are adapters behind feature flags. They are disabled until Railway env variables are configured.
 
 External providers may create hosted checkout pages, but they must not activate access until status/webhook verification confirms payment.
 
@@ -68,7 +68,28 @@ POST /api/payments/webhooks/halyk
 POST /api/payments/webhooks/freedom
 POST /api/payments/webhooks/kaspi
 POST /api/payments/webhooks/crypto
+POST /api/payments/webhooks/aipay
 ```
+
+For the customer MVP checklist, the API also exposes compatibility endpoints:
+
+```text
+POST /api/payment/create
+POST /api/payment/webhook
+```
+
+Those endpoints map to the same order/webhook model and default to `provider=aipay`.
+
+## Forecast paywall
+
+The customer checklist requires one free analysis per Telegram user:
+
+```text
+POST /api/analyze
+GET /api/specialties?subject=math_cs
+```
+
+`/api/analyze` creates an `analyses` audit row. The first request for a `tg_id` returns `is_free=true` and marks `users.free_analysis_used=true`. Later requests return a preview with `paywall=true` unless the user has `pro_once` or `premium_month` entitlement.
 
 ## Testing flow
 

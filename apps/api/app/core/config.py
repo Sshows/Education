@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     payments_enable_freedom: bool = False
     payments_enable_kaspi: bool = False
     payments_enable_crypto: bool = False
+    payments_enable_aipay: bool = False
     premium_daily_forecast_limit: int = 50
     premium_daily_ai_limit: int = 100
     support_email: str = ""
@@ -53,6 +54,13 @@ class Settings(BaseSettings):
     crypto_webhook_secret: str = ""
     crypto_allowed_assets: str = "USDT,TON"
     crypto_networks: str = "TON,TRC20"
+    aipay_enabled: bool = False
+    aipay_test_mode: bool = True
+    aipay_api_url: str = ""
+    aipay_secret: str = ""
+    aipay_success_url: str = ""
+    aipay_failure_url: str = ""
+    aipay_callback_url: str = ""
 
     @property
     def telegram_initdata_token(self) -> str:

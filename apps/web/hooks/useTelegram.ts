@@ -83,7 +83,9 @@ export function useTelegram(): UseTelegramReturn {
   const [isMobile] = useState(() => isMobilePlatform());
   const [platform] = useState<TelegramPlatform>(() => webApp?.platform ?? 'unknown');
   const [colorScheme, setColorScheme] = useState<'light' | 'dark'>(() => webApp?.colorScheme ?? 'dark');
-  const [viewportHeight, setViewportHeight] = useState(() => webApp?.viewportHeight ?? window?.innerHeight ?? 600);
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    webApp?.viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 600)
+  );
   const [isExpanded, setIsExpanded] = useState(() => webApp?.isExpanded ?? false);
 
   // Keep mainButton click ref to properly remove listeners

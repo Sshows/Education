@@ -204,6 +204,11 @@ async def crypto_webhook(request: Request, db: Session = Depends(get_db)):
     return await _webhook("crypto", request, db)
 
 
+@router.post("/webhooks/aipay", response_model=WebhookOut)
+async def aipay_webhook(request: Request, db: Session = Depends(get_db)):
+    return await _webhook("aipay", request, db)
+
+
 @admin_router.get("/orders", dependencies=[Depends(_require_admin)])
 def admin_orders(db: Session = Depends(get_db)):
     orders = db.scalars(select(Order).order_by(Order.created_at.desc())).all()

@@ -45,6 +45,17 @@ Read:
 
 The bot token must live only in Railway Variables or local untracked `.env` files. If a token is exposed, rotate it in BotFather before production use.
 
+## Customer MVP endpoints
+
+The app includes the customer-checklist compatibility layer:
+
+- `GET /api/specialties?subject=math_cs` - specialties for selected ENT subjects.
+- `POST /api/analyze` - chance analysis with first free analysis per Telegram user.
+- `POST /api/payment/create` - external KZT checkout compatibility endpoint, defaulting to AiPay when enabled.
+- `POST /api/payment/webhook` - AiPay-compatible status webhook.
+
+AiPay is feature-flagged off by default. Telegram Stars remains the primary payment method inside Telegram Mini App.
+
 ## Checks
 
 ```bash
@@ -60,4 +71,4 @@ cd ../web && npm run build
 - If data is missing, show that confirmed source data is unavailable.
 - Do not trust Telegram user IDs from the frontend until `/api/auth/telegram` validates `initData`.
 - Telegram Stars is primary for digital access inside Telegram.
-- External KZT/crypto providers are feature-flagged and must verify provider status/webhooks before access is granted.
+- External KZT/crypto providers, including AiPay, are feature-flagged and must verify provider status/webhooks before access is granted.

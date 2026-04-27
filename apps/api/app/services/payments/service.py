@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.models import Entitlement, Order, Payment, PaymentProduct, PaymentWebhookEvent, User
+from app.services.payments.aipay import AipayProvider
 from app.services.payments.base import CheckoutResult
 from app.services.payments.crypto import CryptoProvider
 from app.services.payments.errors import PaymentNotFoundError, PaymentValidationError, ProviderDisabledError
@@ -84,6 +85,7 @@ class PaymentService:
             "freedom_pay": FreedomPayProvider(),
             "kaspi": KaspiProvider(),
             "crypto": CryptoProvider(),
+            "aipay": AipayProvider(),
         }
 
     def ensure_default_products(self) -> None:
@@ -122,19 +124,23 @@ class PaymentService:
                 raise PaymentValidationError("This product cannot be paid with Telegram Stars.")
             return int(product.stars_price), "XTR"
 
-        if provider in {"halyk_epay", "freedom_pay", "kaspi"}:
+        if provider in {"halyk_epay", "freedom_pay", "kaspi", "aipay"}:
             if provider == "halyk_epay" and (not settings.payments_enable_halyk or not settings.halyk_epay_enabled):
                 raise ProviderDisabledError("Halyk ePay is disabled. Use Telegram Stars or enable Halyk env flags.")
             if provider == "freedom_pay" and (not settings.payments_enable_freedom or not settings.freedom_pay_enabled):
                 raise ProviderDisabledError("Freedom Pay is disabled. Use Telegram Stars or enable Freedom Pay env flags.")
             if provider == "kaspi" and (not settings.payments_enable_kaspi or not settings.kaspi_enabled):
                 raise ProviderDisabledError("Kaspi Pay пока не подключён. Используйте Telegram Stars или карту.")
+            if provider == "aipay" and (not settings.payments_enable_aipay or not settings.aipay_enabled):
+                raise ProviderDisabledError("AiPay is disabled. Use Telegram Stars or enable AiPay env flags.")
             if provider == "halyk_epay" and (not settings.halyk_epay_terminal_id or not settings.halyk_epay_client_id or not settings.halyk_epay_client_secret):
                 raise ProviderDisabledError("Halyk ePay credentials are not configured.")
             if provider == "freedom_pay" and (not settings.freedom_pay_merchant_id or not settings.freedom_pay_secret_key):
                 raise ProviderDisabledError("Freedom Pay credentials are not configured.")
             if provider == "kaspi" and (not settings.kaspi_provider or not settings.kaspi_api_url or not settings.kaspi_api_key):
                 raise ProviderDisabledError("Kaspi provider credentials are not configured.")
+            if provider == "aipay" and (not settings.aipay_api_url or not settings.aipay_secret):
+                raise ProviderDisabledError("AiPay credentials are not configured.")
             if not product.kzt_price:
                 raise PaymentValidationError("This product cannot be paid in KZT.")
             return int(product.kzt_price), "KZT"
@@ -373,4 +379,51 @@ class PaymentService:
         self.db.add(event)
         self.db.commit()
         self.db.refresh(event)
+        if not verification.signature_valid:
+            return event
+
+        result = await provider_impl.handle_webhook(payload, headers)
+        event.processed = result.processed
+        if result.processed:
+            event.processed_at = datetime.utcnow()
+        if result.order_id and result.status in {"paid", "failed", "canceled", "cancelled", "expired"}:
+            order = self.db.get(Order, result.order_id)
+            if order and order.provider == provider:
+                payload_amount = payload.get("amount")
+                payload_currency = payload.get("currency")
+                if payload_amount is not None and int(float(payload_amount)) != int(order.amount):
+                    event.error_message = "Webhook amount does not match order amount."
+                    self.db.commit()
+                    return event
+                if payload_currency is not None and str(payload_currency).upper() != order.currency:
+                    event.error_message = "Webhook currency does not match order currency."
+                    self.db.commit()
+                    return event
+
+                target_status = "canceled" if result.status == "cancelled" else result.status
+                if target_status == "paid":
+                    was_paid = order.status == "paid"
+                    self._validate_status_transition(order.status, "paid")
+                    order.status = "paid"
+                    order.provider_payment_id = str(payload.get("payment_id") or payload.get("id") or payload.get("provider_payment_id") or "")
+                    order.paid_at = order.paid_at or datetime.utcnow()
+                    if not was_paid:
+                        self.db.add(
+                            Payment(
+                                order_id=order.id,
+                                provider=provider,
+                                status="paid",
+                                amount=order.amount,
+                                currency=order.currency,
+                                provider_payment_id=order.provider_payment_id,
+                                raw_payload_json=payload,
+                                signature_valid=True,
+                            )
+                        )
+                    self.db.commit()
+                    self.grant_entitlement(order)
+                else:
+                    self._validate_status_transition(order.status, target_status)
+                    order.status = target_status
+                    self.db.commit()
         return event
