@@ -18,6 +18,7 @@ class User(Base, TimestampMixin):
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     language_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    free_analysis_used: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class ApplicantProfile(Base, TimestampMixin):
@@ -206,6 +207,22 @@ class AdminUser(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
     role: Mapped[str] = mapped_column(String(64), default="editor")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Analysis(Base):
+    __tablename__ = "analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"), nullable=True)
+    score: Mapped[int] = mapped_column(Integer)
+    subject_pair: Mapped[str] = mapped_column(String(64), index=True)
+    quota: Mapped[str] = mapped_column(String(32), default="general")
+    specs_json: Mapped[list] = mapped_column(JSON, default=list)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    card_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

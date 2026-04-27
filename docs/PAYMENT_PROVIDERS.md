@@ -55,6 +55,40 @@ If Kaspi is not configured, UI should show:
 Kaspi Pay пока не подключён. Используйте Telegram Stars или карту.
 ```
 
+## AiPay
+
+AiPay is supported as a customer-checklist compatibility adapter for external KZT checkout. It is disabled by default and must not be used inside Telegram as the primary digital-goods flow; Telegram Stars stays primary there.
+
+Env:
+
+```text
+PAYMENTS_ENABLE_AIPAY=false
+AIPAY_ENABLED=false
+AIPAY_TEST_MODE=true
+AIPAY_API_URL=
+AIPAY_SECRET=
+AIPAY_SUCCESS_URL=
+AIPAY_FAILURE_URL=
+AIPAY_CALLBACK_URL=
+NEXT_PUBLIC_PAYMENTS_ENABLE_AIPAY=false
+```
+
+Endpoints:
+
+```text
+POST /api/payment/create
+POST /api/payment/webhook
+POST /api/payments/webhooks/aipay
+```
+
+Rules:
+
+- Create only hosted checkout links.
+- Never store card data.
+- Verify `x-aipay-signature` before marking an order paid.
+- Validate amount and currency against the internal order.
+- Grant entitlement only after a signed webhook/status says paid.
+
 ## Crypto
 
 Crypto is disabled by default and must use a regulated external payment provider.

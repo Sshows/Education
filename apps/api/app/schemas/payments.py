@@ -6,7 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-PaymentProviderCode = Literal["telegram_stars", "halyk_epay", "freedom_pay", "kaspi", "crypto", "manual"]
+PaymentProviderCode = Literal["telegram_stars", "halyk_epay", "freedom_pay", "kaspi", "crypto", "aipay", "manual"]
 
 
 class ProductOut(BaseModel):

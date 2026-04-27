@@ -27,6 +27,7 @@ function CalculatorContent() {
   const [quota, setQuota] = useState('ordinary');
   const [language, setLanguage] = useState('ru');
   const [program, setProgram] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // If URL has a combo param, auto-select it
   useEffect(() => {
@@ -76,16 +77,48 @@ function CalculatorContent() {
     if (found) setCombo(found);
   }, []);
 
-  const calculate = useCallback(() => {
+  const calculate = useCallback(async () => {
     if (!isValid) {
       getTelegramWebApp()?.HapticFeedback?.notificationOccurred?.('warning');
       return;
     }
-    getTelegramWebApp()?.HapticFeedback?.impactOccurred?.('medium');
+    const webApp = getTelegramWebApp();
+    webApp?.HapticFeedback?.impactOccurred?.('medium');
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (apiUrl) {
+      setSubmitting(true);
+      try {
+        const response = await fetch(`${apiUrl}/api/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tg_id: webApp?.initDataUnsafe?.user?.id,
+            score: totalScore,
+            subject_pair: combo!.key,
+            quota,
+            language,
+            spec_codes: [program],
+          }),
+        });
+        if (response.ok) {
+          const analysis = await response.json();
+          sessionStorage.setItem('entGrant:lastAnalysis', JSON.stringify(analysis));
+          router.push(
+            `/result/${encodeURIComponent(String(analysis.analysis_id ?? 'demo'))}?score=${encodeURIComponent(score)}&program=${encodeURIComponent(program)}&combo=${encodeURIComponent(combo!.key)}`,
+          );
+          return;
+        }
+      } catch {
+        // Keep the local demo result available if API is temporarily unreachable.
+      } finally {
+        setSubmitting(false);
+      }
+    }
     router.push(
       `/result/demo?score=${encodeURIComponent(score)}&program=${encodeURIComponent(program)}&combo=${encodeURIComponent(combo!.key)}`,
     );
-  }, [isValid, program, router, score, combo]);
+  }, [combo, isValid, language, program, quota, router, score, totalScore]);
 
   // Telegram MainButton
   useEffect(() => {
@@ -286,12 +319,12 @@ function CalculatorContent() {
       <div className="sticky-action">
         <button
           className="button"
-          disabled={!isValid}
+          disabled={!isValid || submitting}
           onClick={calculate}
           style={{ width: '100%' }}
           type="button"
         >
-          {isValid ? '🎯 Рассчитать шанс' : 'Заполните все поля'}
+          {submitting ? 'Считаем...' : isValid ? '🎯 Рассчитать шанс' : 'Заполните все поля'}
         </button>
         {!isValid && (
           <p className="small" style={{ textAlign: 'center', marginTop: 4 }}>

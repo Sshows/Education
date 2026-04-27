@@ -71,6 +71,35 @@ export function startStarsPurchase(productCode: string): void {
   window.location.href = botDeepLink(`buy_${productCode}`);
 }
 
+export function isAipayCheckoutEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_PAYMENTS_ENABLE_AIPAY === 'true';
+}
+
+export async function startAipayCheckout(productCode: string): Promise<void> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    throw new Error('API URL is not configured');
+  }
+  const response = await fetch(`${apiUrl}/api/payment/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      product_code: productCode,
+      provider: 'aipay',
+      return_url: `${window.location.origin}/payment/success`,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Payment API ${response.status}`);
+  }
+  const data = await response.json() as { payment_url?: string; checkout_url?: string };
+  const checkoutUrl = data.payment_url ?? data.checkout_url;
+  if (!checkoutUrl) {
+    throw new Error('Payment URL is missing');
+  }
+  window.location.href = checkoutUrl;
+}
+
 export async function fetchProducts(): Promise<PaymentProduct[]> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
