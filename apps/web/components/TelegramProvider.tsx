@@ -14,6 +14,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isInsideTelegram } = useTelegramContext();
+  const immersiveFlow = pathname === '/' || pathname.startsWith('/calculator') || pathname.startsWith('/result');
 
   // BackButton: show on all pages except home
   useEffect(() => {
@@ -48,9 +49,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
           </a>
         </div>
       )}
-      <div className="app-shell">
+      <div className={immersiveFlow ? 'app-shell app-shell--immersive' : 'app-shell'}>
         {children}
-        <BottomNav />
+        {!immersiveFlow && <BottomNav />}
       </div>
     </>
   );

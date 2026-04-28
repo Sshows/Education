@@ -6,14 +6,14 @@ import { TelegramProvider } from '../components/TelegramProvider';
 
 export const metadata: Metadata = {
   title: {
-    default: 'ENT Grant KZ — Шанс поступления по ЕНТ',
-    template: '%s | ENT Grant KZ',
+    default: 'ГрантМетр — шанс на грант по ЕНТ',
+    template: '%s | ГрантМетр',
   },
   description:
-    'Рассчитай шанс поступления на грант или платное по результатам ЕНТ. Калькулятор с историческими данными, вузами Казахстана и программами ОП.',
+    'Telegram Mini App для расчёта шанса на грант по ЕНТ: балл, предметы, квота и специальности.',
   keywords: ['ЕНТ', 'грант', 'поступление', 'Казахстан', 'калькулятор', 'МНВО', 'НЦТ'],
   openGraph: {
-    title: 'ENT Grant KZ — Шанс поступления по ЕНТ',
+    title: 'ГрантМетр — шанс на грант по ЕНТ',
     description: 'Ориентировочный прогноз поступления по открытым данным НЦТ и МНВО.',
     type: 'website',
     locale: 'ru_KZ',
